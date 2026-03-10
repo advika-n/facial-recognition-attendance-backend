@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-zw^-llku+$6!7e%--bfx*p75zssj3=_57%+@npjcz23fa8i!y&
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['facial-recognition-attendance-backend-production.up.railway.app']
 
 
 # Application definition
@@ -127,4 +127,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = [
+    "https://attendance-frontend-eta-nine.vercel.app",
+]
