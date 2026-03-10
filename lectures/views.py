@@ -3,19 +3,29 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 from .models import Course
 
+
 @csrf_exempt
 def course_list(request):
     if request.method == 'GET':
-        courses = list(Course.objects.values('id', 'course_code', 'course_name'))
+        courses = list(Course.objects.values('id', 'class_id', 'course_code', 'course_name', 'professor_id'))
         return JsonResponse(courses, safe=False)
 
     if request.method == 'POST':
         data = json.loads(request.body)
         course = Course.objects.create(
+            class_id=data.get('class_id', ''),
             course_code=data['course_code'],
-            course_name=data['course_name']
+            course_name=data['course_name'],
+            professor_id=data.get('professor_id', '')
         )
-        return JsonResponse({'id': course.id, 'course_code': course.course_code, 'course_name': course.course_name}, status=201)
+        return JsonResponse({
+            'id': course.id,
+            'class_id': course.class_id,
+            'course_code': course.course_code,
+            'course_name': course.course_name,
+            'professor_id': course.professor_id
+        }, status=201)
+
 
 @csrf_exempt
 def course_detail(request, pk):
@@ -28,4 +38,10 @@ def course_detail(request, pk):
         course.delete()
         return JsonResponse({'message': 'Deleted'})
 
-    return JsonResponse({'id': course.id, 'course_code': course.course_code, 'course_name': course.course_name})
+    return JsonResponse({
+        'id': course.id,
+        'class_id': course.class_id,
+        'course_code': course.course_code,
+        'course_name': course.course_name,
+        'professor_id': course.professor_id
+    })

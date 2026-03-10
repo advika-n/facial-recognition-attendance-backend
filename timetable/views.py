@@ -3,6 +3,7 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 from .models import TimetableEntry
 
+
 @csrf_exempt
 def timetable_list(request):
     if request.method == 'GET':
@@ -17,9 +18,11 @@ def timetable_list(request):
             slot_type=data['slot_type'],
             day=data['day'],
             slot=data['slot'],
-            classroom=data['classroom']
+            classroom=data['classroom'],
+            professor_id=data.get('professor_id', '')
         )
         return JsonResponse({'id': entry.id, 'class_id': entry.class_id}, status=201)
+
 
 @csrf_exempt
 def timetable_detail(request, pk):
@@ -32,4 +35,10 @@ def timetable_detail(request, pk):
         entry.delete()
         return JsonResponse({'message': 'Deleted'})
 
-    return JsonResponse({'id': entry.id, 'class_id': entry.class_id, 'day': entry.day, 'slot': entry.slot})
+    return JsonResponse({
+        'id': entry.id,
+        'class_id': entry.class_id,
+        'day': entry.day,
+        'slot': entry.slot,
+        'professor_id': entry.professor_id
+    })

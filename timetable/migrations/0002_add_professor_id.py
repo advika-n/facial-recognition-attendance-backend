@@ -1,0 +1,21 @@
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('timetable', '0001_initial'),
+    ]
+
+    operations = [
+        migrations.AddField(
+            model_name='timetableentry',
+            name='professor_id',
+            field=models.CharField(blank=True, default='', max_length=30),
+        ),
+        migrations.AlterField(
+            model_name='timetableentry',
+            name='slot',
+            field=models.CharField(max_length=20),
+        ),
+    ]

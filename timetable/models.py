@@ -1,12 +1,14 @@
 from django.db import models
 
+
 class TimetableEntry(models.Model):
     class_id = models.CharField(max_length=50)
     course_name = models.CharField(max_length=100)
     slot_type = models.CharField(max_length=20)
     day = models.CharField(max_length=20)
-    slot = models.CharField(max_length=10)
+    slot = models.CharField(max_length=20)
     classroom = models.CharField(max_length=50)
+    professor_id = models.CharField(max_length=30, blank=True, default='')
 
     class Meta:
         unique_together = ('day', 'slot', 'classroom')
