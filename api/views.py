@@ -10,6 +10,8 @@ from students.models import Student
 from enrollments.models import Enrollment
 from attendance.models import Attendance
 from faces.models import FaceEncoding
+from lecture_attendance_view import lecture_attendance
+
 
 
 def current_lecture(request):
@@ -213,3 +215,27 @@ def register_face(request):
     )
 
     return JsonResponse({"message": "Face encoding stored successfully"})
+
+def lecture_attendance(request, lecture_id):
+    """
+    Returns list of students marked present for a specific lecture.
+    Called by the professor dashboard every 5 seconds during an active session.
+    GET /api/lecture/<lecture_id>/attendance/
+    """
+    try:
+        lecture = Lecture.objects.get(pk=lecture_id)
+    except Lecture.DoesNotExist:
+        return JsonResponse({"error": "Lecture not found"}, status=404)
+
+    records = Attendance.objects.filter(lecture=lecture).select_related('student')
+
+    attendance = []
+    for record in records:
+        attendance.append({
+            "name": record.student.name,
+            "registration_number": record.student.registration_number,
+            "department": record.student.department if hasattr(record.student, 'department') else "",
+            "time_marked": record.created_at.isoformat() if hasattr(record, 'created_at') else None
+        })
+
+    return JsonResponse({"lecture_id": lecture_id, "attendance": attendance})
