@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["cmake", "gcc", "g++", "make", "pkg-config", "xorg.libX11", "xorg.libXext", "libGL"]
+nixPkgs = ["cmake", "gcc", "g++", "make", "pkg-config", "openblas", "xorg.libX11", "xorg.libXext", "libGL", "glib"]
 
 [phases.build]
 cmds = ["pip install -r requirements.txt"]
