@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-zw^-llku+$6!7e%--bfx*p75zssj3=_57%+@npjcz23fa8i!y&'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['facial-recognition-attendance-backend-production.up.railway.app']
 
