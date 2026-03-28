@@ -152,9 +152,7 @@ def lecture_attendance(request, lecture_id):
             "time_marked": record.timestamp.isoformat() if record.timestamp else None
         })
 
-    total_enrolled = Enrollment.objects.filter(course=lecture.course).count()
-
-    return JsonResponse({"lecture_id": lecture_id, "course_name": lecture.course.course_name, "course_code": lecture.course.course_code, "classroom": lecture.classroom, "date": str(lecture.date), "start_time": str(lecture.start_time), "end_time": str(lecture.end_time), "total_enrolled": total_enrolled, "attendance": attendance})
+    return JsonResponse({"lecture_id": lecture_id, "attendance": attendance})
 
 
 # ─── Student Attendance Percentage ───────────────────────────────────────────
@@ -193,7 +191,8 @@ def student_attendance_percentage(request, student_id):
 def register_face(request):
     """
     Accepts a base64 JPEG image, extracts face encoding, stores in DB.
-    Body: { "student_id": 1, "image": "<base64 jpeg>" }
+    Body: { "student_id": 1, "image": "<base64 jpeg>", "label": "straight" }
+    Multiple calls with different labels build up a richer encoding set.
     """
     if request.method != "POST":
         return JsonResponse({"error": "Only POST allowed"}, status=405)
@@ -202,6 +201,7 @@ def register_face(request):
         data = json.loads(request.body)
         student_id = data.get("student_id")
         image_b64 = data.get("image")
+        label = data.get("label", "")
     except Exception:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
@@ -232,14 +232,18 @@ def register_face(request):
 
         encoding_bytes = encodings[0].tobytes()
 
-        FaceEncoding.objects.update_or_create(
+        FaceEncoding.objects.create(
             student=student,
-            defaults={"encoding": encoding_bytes}
+            encoding=encoding_bytes,
+            label=label
         )
 
+        total = FaceEncoding.objects.filter(student=student).count()
+
         return JsonResponse({
-            "message": f"Face registered successfully for {student.name}",
-            "student": student.registration_number
+            "message": f"Photo {total} registered for {student.name} ({label})",
+            "student": student.registration_number,
+            "total_encodings": total
         })
 
     except ImportError as e:
@@ -265,6 +269,7 @@ def get_encodings(request):
             "name": enc.student.name,
             "registration_number": enc.student.registration_number,
             "department": enc.student.department,
+            "label": enc.label,
             "encoding": base64.b64encode(bytes(enc.encoding)).decode('utf-8')
         })
 
@@ -365,7 +370,7 @@ def recognize_and_mark(request):
 
         return JsonResponse({"recognized": False, "reason": "No match found"})
 
-    except ImportError as e:
-        return JsonResponse({"error": f"ImportError: {str(e)}"}, status=500)
+    except ImportError:
+        return JsonResponse({"error": "face_recognition or cv2 not installed"}, status=500)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
