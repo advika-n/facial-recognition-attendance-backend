@@ -303,10 +303,19 @@ def recognize_and_mark(request):
 
         nparr = np.frombuffer(jpg_bytes, np.uint8)
         frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+        if frame is None:
+            return JsonResponse({"recognized": False, "reason": "Failed to decode image — may be corrupted"})
+
+        h, w = frame.shape[:2]
+        print(f"[DEBUG] Image received: {len(jpg_bytes)} bytes, decoded size: {w}x{h}")
+
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         face_locations = face_recognition.face_locations(rgb_frame)
         face_encodings_in_frame = face_recognition.face_encodings(rgb_frame, face_locations)
+
+        print(f"[DEBUG] Faces found: {len(face_locations)}")
 
         if not face_encodings_in_frame:
             return JsonResponse({"recognized": False, "reason": "No face detected"})
