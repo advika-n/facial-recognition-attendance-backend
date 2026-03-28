@@ -3,7 +3,7 @@ aptPackages = [
   "cmake",
   "build-essential",
   "libopenblas-dev",
-  "libx11-dev",
+  "libx11-6",
   "libgl1",
   "libglib2.0-0"
 ]
