@@ -1,3 +1,4 @@
+#v2
 altair==6.0.0
 anyio==4.11.0
 argon2-cffi==25.1.0
