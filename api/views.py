@@ -240,8 +240,8 @@ def register_face(request):
             "student": student.registration_number
         })
 
-    except ImportError:
-        return JsonResponse({"error": "face_recognition library not available"}, status=500)
+    except ImportError as e:
+        return JsonResponse({"error": f"ImportError: {str(e)}"}, status=500)
     except Exception as e:
         return JsonResponse({"error": f"Failed to process image: {str(e)}"}, status=500)
 
@@ -363,7 +363,7 @@ def recognize_and_mark(request):
 
         return JsonResponse({"recognized": False, "reason": "No match found"})
 
-    except ImportError:
-        return JsonResponse({"error": "face_recognition or cv2 not installed"}, status=500)
+    except ImportError as e:
+        return JsonResponse({"error": f"ImportError: {str(e)}"}, status=500)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
