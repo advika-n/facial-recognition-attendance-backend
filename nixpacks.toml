@@ -1,3 +1,6 @@
+[variables]
+NIXPACKS_PYTHON_VERSION = "3.11"
+
 [phases.setup]
 nixPkgs = ["cmake", "gcc", "g++", "make", "pkg-config", "openblas", "xorg.libX11", "xorg.libXext", "libGL", "glib"]
 
