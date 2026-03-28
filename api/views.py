@@ -336,7 +336,9 @@ def recognize_and_mark(request):
             best_idx = int(np.argmin(distances))
             best_distance = distances[best_idx]
 
-            if best_distance < 0.6:
+            print(f"[DEBUG] Best match distance: {best_distance:.3f} for {known_students[best_idx].name}")
+
+            if best_distance < 0.65:
                 student = known_students[best_idx]
 
                 now = timezone.localtime()
