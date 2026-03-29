@@ -16,4 +16,5 @@ class Enrollment(models.Model):
         unique_together = ('student', 'course', 'teacher')
 
     def __str__(self):
-        return f"{self.student.registration_number} → {self.course.course_code} ({self.teacher.name})"
+        teacher_name = self.teacher.name if self.teacher else "No teacher"
+        return f"{self.student.registration_number} → {self.course.course_code} ({teacher_name})"

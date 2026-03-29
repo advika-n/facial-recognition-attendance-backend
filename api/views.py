@@ -152,7 +152,19 @@ def lecture_attendance(request, lecture_id):
             "time_marked": record.timestamp.isoformat() if record.timestamp else None
         })
 
-    return JsonResponse({"lecture_id": lecture_id, "attendance": attendance})
+    total_enrolled = Enrollment.objects.filter(course=lecture.course).count()
+
+    return JsonResponse({
+        "lecture_id": lecture_id,
+        "course_name": lecture.course.course_name,
+        "course_code": lecture.course.course_code,
+        "classroom": lecture.classroom,
+        "date": str(lecture.date),
+        "start_time": str(lecture.start_time),
+        "end_time": str(lecture.end_time),
+        "total_enrolled": total_enrolled,
+        "attendance": attendance
+    })
 
 
 # ─── Student Attendance Percentage ───────────────────────────────────────────

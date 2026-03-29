@@ -13,12 +13,19 @@ def student_list(request):
         return JsonResponse(students, safe=False)
 
     if request.method == 'POST':
-        data = json.loads(request.body)
-        student = Student.objects.create(
-            name=data['name'],
-            registration_number=data['registration_number'],
-            department=data.get('department', '')
-        )
+        try:
+            data = json.loads(request.body)
+            name = data.get('name')
+            registration_number = data.get('registration_number')
+            if not name or not registration_number:
+                return JsonResponse({'error': 'name and registration_number are required'}, status=400)
+            student = Student.objects.create(
+                name=name,
+                registration_number=registration_number,
+                department=data.get('department', '')
+            )
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
         return JsonResponse({
             'id': student.id,
             'name': student.name,
