@@ -234,7 +234,7 @@ def register_face(request):
         image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
         image_np = np.array(image)
 
-        encodings = face_recognition.face_encodings(image_np)
+        encodings = face_recognition.face_encodings(image_np, num_jitters=10)
 
         if len(encodings) == 0:
             return JsonResponse({"error": "No face detected. Please try again."}, status=400)
