@@ -226,23 +226,32 @@ def register_face(request):
         return JsonResponse({"error": "Student not found"}, status=404)
 
     try:
-        import face_recognition
-        from PIL import Image
+        import insightface
+        import cv2
         import io
+        from PIL import Image
+
+        # Load InsightFace ArcFace model (buffalo_sc is lightweight, no detection needed)
+        app = insightface.app.FaceAnalysis(name='buffalo_sc', providers=['CPUExecutionProvider'])
+        app.prepare(ctx_id=0, det_size=(320, 320))
 
         image_bytes = base64.b64decode(image_b64)
         image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
         image_np = np.array(image)
+        # InsightFace expects BGR
+        bgr = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
 
-        encodings = face_recognition.face_encodings(image_np, num_jitters=10)
+        faces = app.get(bgr)
 
-        if len(encodings) == 0:
+        if len(faces) == 0:
             return JsonResponse({"error": "No face detected. Please try again."}, status=400)
 
-        if len(encodings) > 1:
+        if len(faces) > 1:
             return JsonResponse({"error": "Multiple faces detected. Ensure only one face is visible."}, status=400)
 
-        encoding_bytes = encodings[0].tobytes()
+        # 512-d float32 embedding
+        embedding = faces[0].normed_embedding.astype(np.float32)
+        encoding_bytes = embedding.tobytes()
 
         FaceEncoding.objects.create(
             student=student,
@@ -306,7 +315,7 @@ def recognize_and_mark(request):
         return JsonResponse({"error": "X-Classroom header is required"}, status=400)
 
     try:
-        import face_recognition
+        import insightface
         import cv2
 
         jpg_bytes = request.body
@@ -322,45 +331,47 @@ def recognize_and_mark(request):
         h, w = frame.shape[:2]
         print(f"[DEBUG] Image received: {len(jpg_bytes)} bytes, decoded size: {w}x{h}")
 
-        # Resize SVGA (800x600) to 50% — face still ~120x120, well above dlib threshold.
-        # Cuts processing time in half on Railway's shared CPU.
-        frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
+        # Load InsightFace ArcFace model
+        app = insightface.app.FaceAnalysis(name='buffalo_sc', providers=['CPUExecutionProvider'])
+        app.prepare(ctx_id=0, det_size=(320, 320))
 
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        faces = app.get(frame)
+        print(f"[DEBUG] Faces found: {len(faces)}")
 
-        face_locations = face_recognition.face_locations(rgb_frame, number_of_times_to_upsample=0)
-        face_encodings_in_frame = face_recognition.face_encodings(rgb_frame, face_locations)
-
-        print(f"[DEBUG] Faces found: {len(face_locations)}")
-
-        if not face_encodings_in_frame:
+        if not faces:
             return JsonResponse({"recognized": False, "reason": "No face detected"})
 
         stored = FaceEncoding.objects.select_related('student').all()
         if not stored.exists():
             return JsonResponse({"recognized": False, "reason": "No faces registered"})
 
+        # Load known encodings — InsightFace uses 512-d float32, cosine similarity
         known_encodings = []
         known_students = []
         for enc in stored:
-            arr = np.frombuffer(bytes(enc.encoding), dtype=np.float64)
+            arr = np.frombuffer(bytes(enc.encoding), dtype=np.float32)
             known_encodings.append(arr)
             known_students.append(enc.student)
 
-        for face_enc in face_encodings_in_frame:
-            distances = face_recognition.face_distance(known_encodings, face_enc)
-            best_idx = int(np.argmin(distances))
-            best_distance = distances[best_idx]
+        for face in faces:
+            query_enc = face.normed_embedding.astype(np.float32)
 
-            # Log ALL distances so we can tune threshold if needed
+            # Cosine similarity: higher = more similar (opposite of dlib distance)
+            similarities = [float(np.dot(query_enc, k)) for k in known_encodings]
+            best_idx = int(np.argmax(similarities))
+            best_sim = similarities[best_idx]
+
+            # Log all similarities per unique student (best score per student)
             seen = {}
-            for s, d in zip(known_students, distances):
-                if s.registration_number not in seen or d < seen[s.registration_number][1]:
-                    seen[s.registration_number] = (s.name, d)
-            for reg, (name, d) in sorted(seen.items(), key=lambda x: x[1][1]):
-                print(f"[DEBUG] {name} ({reg}): {d:.4f}")
+            for s, sim in zip(known_students, similarities):
+                if s.registration_number not in seen or sim > seen[s.registration_number][1]:
+                    seen[s.registration_number] = (s.name, sim)
+            for reg, (name, sim) in sorted(seen.items(), key=lambda x: -x[1][1]):
+                print(f"[DEBUG] {name} ({reg}): {sim:.4f}")
 
-            if best_distance < 0.45:
+            # ArcFace threshold: >0.35 is a strong match, <0.20 is clearly unknown
+            THRESHOLD = 0.35
+            if best_sim > THRESHOLD:
                 student = known_students[best_idx]
 
                 now = timezone.localtime()
@@ -398,12 +409,12 @@ def recognize_and_mark(request):
                     "department": student.department,
                     "marked": created,
                     "already_marked": not created,
-                    "confidence": round((1 - best_distance) * 100, 1)
+                    "confidence": round(best_sim * 100, 1)
                 })
 
         return JsonResponse({"recognized": False, "reason": "No match found"})
 
     except ImportError:
-        return JsonResponse({"error": "face_recognition or cv2 not installed"}, status=500)
+        return JsonResponse({"error": "insightface or cv2 not installed"}, status=500)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
