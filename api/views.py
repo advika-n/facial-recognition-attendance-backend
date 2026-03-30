@@ -324,7 +324,7 @@ def recognize_and_mark(request):
 
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        face_locations = face_recognition.face_locations(rgb_frame)
+        face_locations = face_recognition.face_locations(rgb_frame, number_of_times_to_upsample=1)
         face_encodings_in_frame = face_recognition.face_encodings(rgb_frame, face_locations)
 
         print(f"[DEBUG] Faces found: {len(face_locations)}")
