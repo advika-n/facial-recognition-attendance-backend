@@ -322,9 +322,13 @@ def recognize_and_mark(request):
         h, w = frame.shape[:2]
         print(f"[DEBUG] Image received: {len(jpg_bytes)} bytes, decoded size: {w}x{h}")
 
+        # Resize SVGA (800x600) to 50% — face still ~120x120, well above dlib threshold.
+        # Cuts processing time in half on Railway's shared CPU.
+        frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
+
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        face_locations = face_recognition.face_locations(rgb_frame, number_of_times_to_upsample=1)
+        face_locations = face_recognition.face_locations(rgb_frame, number_of_times_to_upsample=0)
         face_encodings_in_frame = face_recognition.face_encodings(rgb_frame, face_locations)
 
         print(f"[DEBUG] Faces found: {len(face_locations)}")
@@ -348,9 +352,15 @@ def recognize_and_mark(request):
             best_idx = int(np.argmin(distances))
             best_distance = distances[best_idx]
 
-            print(f"[DEBUG] Best match distance: {best_distance:.3f} for {known_students[best_idx].name}")
+            # Log ALL distances so we can tune threshold if needed
+            seen = {}
+            for s, d in zip(known_students, distances):
+                if s.registration_number not in seen or d < seen[s.registration_number][1]:
+                    seen[s.registration_number] = (s.name, d)
+            for reg, (name, d) in sorted(seen.items(), key=lambda x: x[1][1]):
+                print(f"[DEBUG] {name} ({reg}): {d:.4f}")
 
-            if best_distance < 0.65:
+            if best_distance < 0.45:
                 student = known_students[best_idx]
 
                 now = timezone.localtime()
