@@ -12,6 +12,17 @@ from enrollments.models import Enrollment
 from attendance.models import Attendance
 from faces.models import FaceEncoding
 
+# ─── InsightFace singleton — loaded ONCE at startup, not per request ──────────
+import insightface as _insightface_module
+import cv2  # needed in register_face and recognize_and_mark
+
+_face_app = _insightface_module.app.FaceAnalysis(
+    name='buffalo_sc',
+    providers=['CPUExecutionProvider']
+)
+_face_app.prepare(ctx_id=0, det_size=(320, 320))
+# ─────────────────────────────────────────────────────────────────────────────
+
 
 # ─── Current Lecture ──────────────────────────────────────────────────────────
 
@@ -226,14 +237,10 @@ def register_face(request):
         return JsonResponse({"error": "Student not found"}, status=404)
 
     try:
-        import insightface
-        import cv2
         import io
         from PIL import Image
 
-        # Load InsightFace ArcFace model (buffalo_sc is lightweight, no detection needed)
-        app = insightface.app.FaceAnalysis(name='buffalo_sc', providers=['CPUExecutionProvider'])
-        app.prepare(ctx_id=0, det_size=(320, 320))
+        app = _face_app  # module-level singleton — no reload cost
 
         image_bytes = base64.b64decode(image_b64)
         image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
@@ -315,9 +322,6 @@ def recognize_and_mark(request):
         return JsonResponse({"error": "X-Classroom header is required"}, status=400)
 
     try:
-        import insightface
-        import cv2
-
         jpg_bytes = request.body
         if not jpg_bytes:
             return JsonResponse({"error": "No image data received"}, status=400)
@@ -331,9 +335,7 @@ def recognize_and_mark(request):
         h, w = frame.shape[:2]
         print(f"[DEBUG] Image received: {len(jpg_bytes)} bytes, decoded size: {w}x{h}")
 
-        # Load InsightFace ArcFace model
-        app = insightface.app.FaceAnalysis(name='buffalo_sc', providers=['CPUExecutionProvider'])
-        app.prepare(ctx_id=0, det_size=(320, 320))
+        app = _face_app  # module-level singleton — no reload cost
 
         faces = app.get(frame)
         print(f"[DEBUG] Faces found: {len(faces)}")
@@ -414,7 +416,7 @@ def recognize_and_mark(request):
 
         return JsonResponse({"recognized": False, "reason": "No match found"})
 
-    except ImportError:
-        return JsonResponse({"error": "insightface or cv2 not installed"}, status=500)
+    except ImportError as e:
+        return JsonResponse({"error": f"Missing dependency: {str(e)}"}, status=500)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
